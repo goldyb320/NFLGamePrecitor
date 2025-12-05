@@ -9,10 +9,13 @@ This project provides a self-contained Jupyter notebook that pulls near real-tim
 ### Features
 - Fetches the most current week (season year, season type, week) from ESPN.
 - Builds team ratings from completed games in prior weeks (points per game minus points allowed per game).
-- Adds a small home-field advantage and converts rating differences to win probabilities via a logistic function.
+- Uses a small home-field advantage and converts rating differences to win probabilities via a logistic curve.
+- Trains a simple ML model (logistic regression) each week on prior completed games using rating differential as a feature; uses the ML probability by default (falls back to heuristic if not enough data).
+- Optionally blends with market-implied probabilities from ESPN odds when available (configurable weight).
 - Predicts current-week winners and saves results to CSV.
 - Backtests across past weeks using only prior-week information to compute accuracy.
-- Plots weekly accuracy, cumulative accuracy, and a calibration (reliability) curve, and prints the Brier score.
+- Plots weekly accuracy, cumulative accuracy, and a calibration (reliability) curve; prints the Brier score.
+- Adds weekly and cumulative RMSE metrics (sqrt-Brier for probabilities and RMSE for point differential) and an accuracy table.
 
 ### Setup
 Requirements:
@@ -20,7 +23,7 @@ Requirements:
 - Jupyter (Notebook or Lab)
 
 The notebook auto-installs these Python packages if missing:
-- `requests`, `pandas`, `matplotlib`, `seaborn`, `numpy`
+- `requests`, `pandas`, `matplotlib`, `seaborn`, `numpy`, `scikit-learn`
 
 On Windows (WSL) or any shell:
 1) (Optional) Create a virtual environment
@@ -39,16 +42,22 @@ On Windows (WSL) or any shell:
 - Ratings:
   - For a given week w, team ratings are computed from completed games prior to week w.
   - Rating metrics: points per game (PPG), points allowed per game (PAPG), and net rating = PPG − PAPG.
-- Prediction:
-  - Home-field advantage: +1.5 points for the home team (modifiable in the notebook).
-  - Logistic transform maps rating differential to win probability.
+- Prediction pipeline:
+  - Heuristic: Home-field advantage (+1.5 by default) and logistic transform of rating differential → win probability.
+  - ML: Logistic regression trained weekly on prior completed games with feature `home_rating − away_rating`; used when sufficient data exists.
+  - Market odds blending (optional): If ESPN odds exist, blend model probability with moneyline-implied home win probability via a configurable weight.
 - Backtesting:
   - For each week 1..N, compute ratings using weeks < current, predict week, compare to actual final scores.
-  - Outputs weekly accuracy, cumulative accuracy, calibration plot, and Brier score.
+  - Outputs weekly accuracy, cumulative accuracy, calibration plot, Brier score, and RMSE tables/plots.
+
+Reference for ESPN NFL endpoints (including odds): `ESPN API ENDPOINTS` — see the curated list here: https://gist.github.com/nntrn/ee26cb2a0716de0947a0a4e9a157bc1c/b99b9e0d2df72470fa622e2f76cecb0362111e9a
 
 ### Configuration knobs (in the notebook)
 - `HOME_FIELD_ADVANTAGE_POINTS` (default: 1.5)
 - `LOGISTIC_SCALE` (default: 7.0) — higher = flatter probability curve
+- `USE_ML_MODEL` (default: True) — enable logistic regression trained on prior weeks.
+- `USE_MARKET_ODDS` (default: True) — blend with moneyline-implied probability when available.
+- `BLEND_WEIGHT` (default: 0.30) — weight for market blending (0.0=model-only, 1.0=market-only when available).
 
 ### Outputs
 - CSV: Saved in `predictions_output/` as `nfl_predictions_w{WEEK}_{YEAR}_{TIMESTAMP}.csv`.
@@ -57,7 +66,9 @@ On Windows (WSL) or any shell:
   - Cumulative accuracy
   - Calibration (reliability) scatter vs. the ideal 45° line
 - Metrics:
+  - Accuracy and cumulative accuracy per week
   - Brier score (lower is better calibration)
+  - RMSE (probability) = sqrt(Brier); RMSE (point differential) in points
 
 ### Troubleshooting
 - Empty predictions:
@@ -69,7 +80,8 @@ On Windows (WSL) or any shell:
 
 ### Extending the model
 - Replace net-rating with Elo or incorporate priors from previous seasons.
-- Blend in injury reports, QB changes, or market odds.
+- Add more features to the ML model (strength of schedule, recent form, injuries) and/or regularize.
+- Blend in injury reports, QB changes, or richer odds history.
 - Add strength-of-schedule adjustments to stabilize early-season ratings.
 
 ### Notes
