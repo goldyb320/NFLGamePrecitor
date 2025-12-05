@@ -12,6 +12,7 @@ This project provides a self-contained Jupyter notebook that pulls near real-tim
 - Uses a small home-field advantage and converts rating differences to win probabilities via a logistic curve.
 - Trains a simple ML model (logistic regression) each week on prior completed games using rating differential as a feature; uses the ML probability by default (falls back to heuristic if not enough data).
 - Optionally blends with market-implied probabilities from ESPN odds when available (configurable weight).
+- Strength-of-schedule (SoS) adjustment via Simple Rating System (SRS) is integrated and used by default; you can toggle it off.
 - Predicts current-week winners and saves results to CSV.
 - Backtests across past weeks using only prior-week information to compute accuracy.
 - Plots weekly accuracy, cumulative accuracy, and a calibration (reliability) curve; prints the Brier score.
@@ -46,6 +47,7 @@ On Windows (WSL) or any shell:
   - Heuristic: Home-field advantage (+1.5 by default) and logistic transform of rating differential → win probability.
   - ML: Logistic regression trained weekly on prior completed games with feature `home_rating − away_rating`; used when sufficient data exists.
   - Market odds blending (optional): If ESPN odds exist, blend model probability with moneyline-implied home win probability via a configurable weight.
+ - Strength of Schedule (SRS): Per-team ratings are adjusted using a fixed-point SRS solver over completed games (iterative averaging of opponent-adjusted margins, normalized to zero-mean). Prediction uses SRS when enabled; otherwise raw net rating.
 - Backtesting:
   - For each week 1..N, compute ratings using weeks < current, predict week, compare to actual final scores.
   - Outputs weekly accuracy, cumulative accuracy, calibration plot, Brier score, and RMSE tables/plots.
@@ -58,6 +60,8 @@ Reference for ESPN NFL endpoints (including odds): `ESPN API ENDPOINTS` — see 
 - `USE_ML_MODEL` (default: True) — enable logistic regression trained on prior weeks.
 - `USE_MARKET_ODDS` (default: True) — blend with moneyline-implied probability when available.
 - `BLEND_WEIGHT` (default: 0.30) — weight for market blending (0.0=model-only, 1.0=market-only when available).
+- `USE_SOS_ADJUSTED` (default: True) — use SRS-adjusted ratings (strength of schedule) in training and predictions.
+- `SRS_ITERATIONS` (default: 10) — number of iterations for the SRS fixed-point solver.
 
 ### Outputs
 - CSV: Saved in `predictions_output/` as `nfl_predictions_w{WEEK}_{YEAR}_{TIMESTAMP}.csv`.
